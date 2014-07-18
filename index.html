@@ -1,0 +1,328 @@
+<!doctype html>
+<html lang="en">
+
+	<head>
+		<meta charset="utf-8">
+
+		<title>Creating ctools content types; aka custom panel panes</title>
+
+		<meta name="description" content="A framework for easily creating beautiful presentations using HTML">
+		<meta name="author" content="Hakim El Hattab">
+
+		<meta name="apple-mobile-web-app-capable" content="yes" />
+		<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+
+		<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+		<link rel="stylesheet" href="css/reveal.min.css">
+		<link rel="stylesheet" href="css/theme/default.css" id="theme">
+
+		<!-- For syntax highlighting -->
+		<link rel="stylesheet" href="lib/css/zenburn.css">
+
+		<!-- If the query includes 'print-pdf', include the PDF print sheet -->
+		<script>
+			if( window.location.search.match( /print-pdf/gi ) ) {
+				var link = document.createElement( 'link' );
+				link.rel = 'stylesheet';
+				link.type = 'text/css';
+				link.href = 'css/print/pdf.css';
+				document.getElementsByTagName( 'head' )[0].appendChild( link );
+			}
+		</script>
+
+		<!--[if lt IE 9]>
+		<script src="lib/js/html5shiv.js"></script>
+		<![endif]-->
+	</head>
+
+	<body>
+
+		<div class="reveal">
+
+			<!-- Any section element inside of this container is displayed as a slide -->
+			<div class="slides">
+				<section>
+					<h1>Creating ctools content types;</h1>
+					<h3>aka custom panel panes</h3>
+					<p>
+						<small><a href="http://brandonneil.com">Brandon Neil</a> / <a href="http://twitter.com/brandonneil">@brandonneil</a></small>
+					</p>
+				</section>
+				<section>
+					<h2>Drupal 7</h2>
+					<aside class="notes">
+					</aside>
+				</section>
+				<section>
+					<h2>Agenda (20 minutes!)</h2>
+					<ul>
+					<li>What is a ctools content type?</li>
+					<li>Examples</li>
+					<li>How to build your own</li>
+				</ul>
+					<aside class="notes">
+					</aside>
+				</section>
+				<section>
+					<h2>What is a ctools content type?</h2>
+					<ul>
+						<li>Type of Ctools plugin (Others: layout, context...)</li>
+						<li>Sort of like blocks, but have per instance configuration</li>
+						<li>"Content type" is confusing</li>
+				</ul>
+					<aside class="notes">
+					</aside>
+				</section>
+
+				<section>
+					<h2>Examples - Demo</h2>
+					<aside class="notes">
+					</aside>
+				</section>
+
+				<section>
+					<section>
+						<h2>How to build your own</h2>
+						<ul>
+							<li>Dependency: Ctools</li>
+							<li>Need something like Page Manager to actually use your pane</li>
+						</ul>
+					</section>
+					<section>
+						<h2>.info file</h2>
+						<h3>corny/corny.info</h3>
+						<code><pre>
+name = DrupalCorn Camp Panes
+description = A badge pane for DrupalCorn.
+core = 7.x
+package = DrupalCorn
+version = 7.x-1.0
+dependencies[] = ctools
+						</code></pre>
+					</section>
+					<section>
+						<h2>.module file</h2>
+						<h3>corny/corny.module</h3>
+						<code><pre>
+/**
+ * @file
+ * Code for the Corny module.
+ */
+
+/**
+ * Implements hook_ctools_plugin_directory().
+ */
+function corny_ctools_plugin_directory($owner, $plugin_type) {
+  if ($owner == 'ctools' && $plugin_type == 'content_types') {
+    return 'plugins/' . $plugin_type;
+  }
+}
+						</code></pre>
+					</section>
+					<section>
+						<h2>cornbadge.inc</h2>
+						<h3>corny/plugins/content_types/cornbadge.inc</h3>
+						<code><pre>
+/**
+ * @file
+ * Ctools content type plugin file for the corny module.
+ */
+
+$plugin = array(
+  'single' => TRUE,
+  'title' => t('DrupalCorn Camp Badge'),
+  'description' => t('Renders a DrupalCorn Camp Badge based on camp data.'),
+  'category' => t('DrupalCorn'),
+  'edit form' => 'cornbadge_edit_form',
+  'render callback' => 'cornbadge_render',
+  'admin info' => 'cornbadge_admin_info',
+  'defaults' => array(
+    'year' => '2014',
+    'type' => 'attendee',
+  ),
+);
+						</code></pre>
+					</section>
+					<section>
+						<h2>cornbadge.inc</h2>
+						<h3>corny/plugins/content_types/cornbadge.inc</h3>
+						<code><pre>
+/**
+ * The 'admin info' callback for the content type.
+ */
+function cornbadge_admin_info($subtype, $conf, $contexts) {
+  if (!empty($conf)) {
+    $block = new stdClass();
+    $block->title = $conf['override_title'] ? $conf['override_title_text'] : '';
+    $block->content = t(
+      'Showing DrupalCorn Camp @year @type Badge.',
+      array('@year' => $conf['year'], '@type' => $conf['type'])
+    );
+    return $block;
+  }
+}
+						</code></pre>
+					</section>
+					<section>
+						<h2>cornbadge.inc</h2>
+						<h3>corny/plugins/content_types/cornbadge.inc</h3>
+						<code><pre>
+/**
+ * The 'Edit form' callback for the content type.
+ */
+function cornbadge_edit_form($form, &$form_state) {
+  $conf = $form_state['conf'];
+  $form['year'] = array(
+    '#type' => 'select',
+    '#options' => drupal_map_assoc(array(t('2014'), t('2013'), t('2012'))),
+    '#title' => t('Which DrupalCorn Camp?'),
+    '#default_value' => $conf['year'],
+  );
+  $form['type'] = array(
+    '#type' => 'select',
+    '#options' => array(
+      'attendee' => t('Attendee'),
+      'individual_sponsor' => t('Individual Sponsor'),
+      'sponsor' => t('Sponsor'),
+    ),
+    '#title' => t('Which badge would you like to display?'),
+    '#default_value' => $conf['type'],
+  );
+  return $form;
+}
+						</code></pre>
+					</section>
+					<section>
+						<h2>cornbadge.inc</h2>
+						<h3>corny/plugins/content_types/cornbadge.inc</h3>
+						<code><pre>
+/**
+ * The submit form stores the data in $conf.
+ */
+function cornbadge_edit_form_submit($form, &$form_state) {
+  foreach (array_keys($form_state['plugin']['defaults']) as $key) {
+    if (isset($form_state['values'][$key])) {
+      $form_state['conf'][$key] = $form_state['values'][$key];
+    }
+  }
+}
+						</code></pre>
+					</section>
+					<section>
+						<h2>cornbadge.inc</h2>
+						<h3>corny/plugins/content_types/cornbadge.inc</h3>
+						<code><pre>
+/**
+ * Run-time rendering of the body of the block (content type).
+ *
+ * See ctools_plugin_examples for more advanced info.
+ */
+function cornbadge_render($subtype, $conf, $panel_args, $context = NULL) {
+  $block = new stdClass();
+
+  $block->title = t('DrupalCorn Camp');
+
+  // Build path to image.
+  $path = drupal_get_path('module', 'corny') . '/assets/' . $conf['year'] . '/' . $conf['type'] . '.png';
+
+  // Create image.
+  $image = theme('image', array('path' => $path, 'alt' => 'DrupalCorn Camp Logo',));
+
+  // Create block content.
+  $block->content = array(
+    // Build link.
+    'link' => array(
+      '#type' => 'link',
+      '#title' => $image,
+      '#href' => 'http://' . $conf['year'] . '.drupalcorn.org',
+      '#options' => array('html' => TRUE),
+    ),
+  );
+  return $block;
+}
+						</code></pre>
+					</section>
+					<section>
+						<h2>CornBadge!</h2>
+						<aside class="notes">
+						</aside>
+					</section>
+				</section>
+				<section>
+					<section>
+						<h2>Two cool things relating to context</h2>
+					</section>
+					<section>
+						<h2>Restrict by Context</h2>
+						<p>In your $plugin array add:</p>
+						<code><pre>
+	'required context' => new ctools_context_required(t('Node'), 'node'),
+						</code></pre>
+						<aside class="notes">
+						</aside>
+					</section>
+					<section>
+						<h2>Context keyword substitution</h2>
+						<p>In your $plugin:</p>
+						<code><pre>
+	'all contexts' => TRUE,
+						</code></pre>
+						<p>And in your render function use:</p>
+						<code><pre>
+	$thing = ctools_context_keyword_substitute($conf['thing'], array(), $context);
+						</code></pre>
+						<aside class="notes">
+						</aside>
+					</section>
+				</section>
+				<section>
+					<h2>Resources</h2>
+					<ul>
+						<li>Steve Persch - <a href="http://stevector.com/ctools_plugins_presentation/#1">Ctools Plugins Explained</a></li>
+						<li>Four Kitchens <a href="http://fourword.fourkitchens.com/article/creating-custom-panels-panes-and-use-substitution-too">Creating Custom Panels Panes (and use substitution too!)</li>
+						<li><a href="http://cgit.drupalcode.org/ctools/tree/ctools_plugin_example">Ctools Plugin Example</a></li>
+					</ul>
+					<aside class="notes">
+					</aside>
+				</section>
+
+			</div>
+
+		</div>
+
+		<script src="lib/js/head.min.js"></script>
+		<script src="js/reveal.min.js"></script>
+
+		<script>
+
+			// Full list of configuration options available here:
+			// https://github.com/hakimel/reveal.js#configuration
+			Reveal.initialize({
+				controls: true,
+				progress: true,
+				history: true,
+				center: true,
+
+				theme: Reveal.getQueryHash().theme, // available themes are in /css/theme
+				transition: Reveal.getQueryHash().transition || 'default', // default/cube/page/concave/zoom/linear/fade/none
+
+				// Parallax scrolling
+				// parallaxBackgroundImage: 'https://s3.amazonaws.com/hakim-static/reveal-js/reveal-parallax-1.jpg',
+				// parallaxBackgroundSize: '2100px 900px',
+
+				// Optional libraries used to extend on reveal.js
+				dependencies: [
+					{ src: 'lib/js/classList.js', condition: function() { return !document.body.classList; } },
+					{ src: 'plugin/markdown/marked.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/markdown/markdown.js', condition: function() { return !!document.querySelector( '[data-markdown]' ); } },
+					{ src: 'plugin/highlight/highlight.js', async: true, callback: function() { hljs.initHighlightingOnLoad(); } },
+					{ src: 'plugin/zoom-js/zoom.js', async: true, condition: function() { return !!document.body.classList; } },
+					{ src: 'plugin/notes/notes.js', async: true, condition: function() { return !!document.body.classList; } }
+				]
+			});
+
+		</script>
+
+	</body>
+</html>
